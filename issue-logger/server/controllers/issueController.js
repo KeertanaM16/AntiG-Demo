@@ -1,7 +1,7 @@
 const db = require('../db');
 
 const createIssue = async (req, res) => {
-  const { issue_text } = req.query;
+  const { issue_text } = req.body;
 
   if (!issue_text || issue_text.trim() === '') {
     return res.status(400).json({ error: 'Issue cannot be empty.' });

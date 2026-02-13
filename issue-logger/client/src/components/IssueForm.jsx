@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import API_BASE_URL from '../config';
+import { issuesAPI } from '../utils/api';
 
 const IssueForm = ({ onIssueAdded }) => {
     const [issue, setIssue] = useState('');
@@ -20,10 +19,14 @@ const IssueForm = ({ onIssueAdded }) => {
         setMessage(null);
 
         try {
-            await axios.post(`${API_BASE_URL}/api/issues`, { issue_text: trimmedIssue });
-            setMessage({ type: 'success', text: 'Issue submitted successfully!' });
-            setIssue('');
-            if (onIssueAdded) onIssueAdded();
+            const result = await issuesAPI.create(trimmedIssue);
+            if (result.error) {
+                setMessage({ type: 'error', text: result.error });
+            } else {
+                setMessage({ type: 'success', text: 'Issue submitted successfully!' });
+                setIssue('');
+                if (onIssueAdded) onIssueAdded();
+            }
         } catch (err) {
             console.error(err);
             setMessage({ type: 'error', text: 'Failed to submit issue. Please try again.' });
@@ -57,8 +60,8 @@ const IssueForm = ({ onIssueAdded }) => {
 
                 {message && (
                     <div className={`text-sm p-3 rounded-md ${message.type === 'success'
-                            ? 'bg-green-50 text-green-700 border border-green-200'
-                            : 'bg-red-50 text-red-700 border border-red-200'
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
                         }`}>
                         {message.text}
                     </div>

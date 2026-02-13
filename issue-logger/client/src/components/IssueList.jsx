@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config';
 
 const IssueList = ({ refreshTrigger }) => {
     const [issues, setIssues] = useState([]);
@@ -9,7 +10,7 @@ const IssueList = ({ refreshTrigger }) => {
     const fetchIssues = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('http://localhost:5000/api/issues');
+            const response = await axios.get(`${API_BASE_URL}/api/issues`);
             setIssues(response.data);
             setError(null);
         } catch (err) {

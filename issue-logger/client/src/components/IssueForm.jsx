@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config';
 
 const IssueForm = ({ onIssueAdded }) => {
     const [issue, setIssue] = useState('');
@@ -19,7 +20,7 @@ const IssueForm = ({ onIssueAdded }) => {
         setMessage(null);
 
         try {
-            await axios.post('http://localhost:5000/api/issues', { issue_text: trimmedIssue });
+            await axios.post(`${API_BASE_URL}/api/issues`, { issue_text: trimmedIssue });
             setMessage({ type: 'success', text: 'Issue submitted successfully!' });
             setIssue('');
             if (onIssueAdded) onIssueAdded();

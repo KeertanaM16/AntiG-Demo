@@ -85,9 +85,8 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // BUG: Typo - 'userr' instead of 'user'
-    // This will throw: Cannot read property 'password' of undefined
-    const isValidPassword = await bcrypt.compare(password, userr.password);
+    // Fixed: Corrected typo 'userr' to 'user'
+    const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials.' });
     }

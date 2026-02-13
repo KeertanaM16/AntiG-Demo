@@ -130,6 +130,96 @@ const createTable = async () => {
   await createRefreshTokensTable();
   await createIssueLogsTable();
   await updateIssueLogsTable();
+  await createUserProfilesTable();
+  await createUserPreferencesTable();
+  await createUserAddressesTable();
+};
+
+/**
+ * Create user_profiles table
+ */
+const createUserProfilesTable = async () => {
+  const query = `
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      phone VARCHAR(20),
+      date_of_birth DATE,
+      bio TEXT,
+      avatar_url VARCHAR(500),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+  `;
+
+  try {
+    await pool.query(query);
+    console.log('Table "user_profiles" is ready.');
+  } catch (err) {
+    console.error('Error creating user_profiles table:', err);
+    throw err;
+  }
+};
+
+/**
+ * Create user_preferences table
+ */
+const createUserPreferencesTable = async () => {
+  const query = `
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      theme VARCHAR(20) DEFAULT 'light',
+      language VARCHAR(10) DEFAULT 'en',
+      notifications_enabled BOOLEAN DEFAULT true,
+      email_notifications BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user_id);
+  `;
+
+  try {
+    await pool.query(query);
+    console.log('Table "user_preferences" is ready.');
+  } catch (err) {
+    console.error('Error creating user_preferences table:', err);
+    throw err;
+  }
+};
+
+/**
+ * Create user_addresses table
+ */
+const createUserAddressesTable = async () => {
+  const query = `
+    CREATE TABLE IF NOT EXISTS user_addresses (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      address_type VARCHAR(20) CHECK (address_type IN ('home', 'work', 'other')),
+      street VARCHAR(255),
+      city VARCHAR(100),
+      state VARCHAR(100),
+      postal_code VARCHAR(20),
+      country VARCHAR(100),
+      is_primary BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_user_addresses_user_id ON user_addresses(user_id);
+  `;
+
+  try {
+    await pool.query(query);
+    console.log('Table "user_addresses" is ready.');
+  } catch (err) {
+    console.error('Error creating user_addresses table:', err);
+    throw err;
+  }
 };
 
 /**

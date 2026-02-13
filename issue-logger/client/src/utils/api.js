@@ -66,11 +66,12 @@ const apiRequest = async (url, options = {}) => {
 
 // Authentication API
 export const authAPI = {
-  register: async (email, password, fullName) => {
+  register: async (userData) => {
+    console.log('Sending registration data:', userData);
     const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, full_name: fullName }),
+      body: JSON.stringify(userData),
       credentials: 'include',
     });
     return response.json();

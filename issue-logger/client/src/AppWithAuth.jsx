@@ -4,10 +4,12 @@ import Login from './components/Login';
 import Register from './components/Register';
 import IssueForm from './components/IssueForm';
 import IssueListWithAuth from './components/IssueListWithAuth';
+import UserProfile from './components/UserProfile';
 
 const AppContent = () => {
     const { user, logout, isAuthenticated, isAdmin } = useAuth();
     const [view, setView] = useState('login'); // 'login', 'register'
+    const [appView, setAppView] = useState('issues'); // 'issues', 'profile'
     const [refreshIssues, setRefreshIssues] = useState(0);
 
     const handleLogout = async () => {
@@ -99,22 +101,49 @@ const AppContent = () => {
                                 )}
                             </p>
                         </div>
-                        <button
-                            onClick={handleLogout}
-                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium transition-colors"
-                        >
-                            Logout
-                        </button>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setAppView('issues')}
+                                className={`px-4 py-2 rounded-md font-medium transition-colors ${appView === 'issues'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                Issue Log
+                            </button>
+                            <button
+                                onClick={() => setAppView('profile')}
+                                className={`px-4 py-2 rounded-md font-medium transition-colors ${appView === 'profile'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                My Profile
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium transition-colors ml-4"
+                            >
+                                Logout
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Issue Form */}
-                <div className="mb-8">
-                    <IssueForm onIssueAdded={handleIssueAdded} />
-                </div>
+                {appView === 'issues' ? (
+                    <>
+                        {/* Issue Form */}
+                        <div className="mb-8">
+                            <IssueForm onIssueAdded={handleIssueAdded} />
+                        </div>
 
-                {/* Issue List */}
-                <IssueListWithAuth refresh={refreshIssues} />
+                        {/* Issue List */}
+                        <IssueListWithAuth refresh={refreshIssues} />
+                    </>
+                ) : (
+                    /* Profile View */
+                    <UserProfile />
+                )}
 
                 {/* Footer */}
                 <div className="mt-12 text-center text-sm text-gray-600">

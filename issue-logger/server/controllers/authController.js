@@ -4,10 +4,19 @@ const db = require('../db');
 const { JWT_SECRET, JWT_REFRESH_SECRET } = require('../middleware/auth');
 
 /**
- * Register a new user
+ * Register a new user with profile, preferences, and address
+ * BUG: Partial data insertion - some inserts fail silently
  */
 const register = async (req, res) => {
-  const { email, password, full_name, role } = req.body;
+  const { 
+    email, password, full_name, role,
+    // Profile data
+    phone, date_of_birth, bio,
+    // Preferences
+    theme, language, notifications_enabled,
+    // Address
+    street, city, state, postal_code, country, address_type
+  } = req.body;
 
   // Validation
   if (!email || !password) {
@@ -35,19 +44,41 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Determine role (only allow admin creation if explicitly set and user is admin)
+    // Determine role
     const userRole = role === 'admin' ? 'admin' : 'user';
 
-    // Insert user
-    const query = `
+    // 1. Insert user into users table
+    const userQuery = `
       INSERT INTO users (email, password, full_name, role) 
       VALUES ($1, $2, $3, $4) 
       RETURNING id, email, full_name, role, created_at
     `;
-    const values = [email, hashedPassword, full_name || null, userRole];
-    const result = await db.query(query, values);
+    const userValues = [email, hashedPassword, full_name || null, userRole];
+    const userResult = await db.query(userQuery, userValues);
+    const user = userResult.rows[0];
 
-    const user = result.rows[0];
+    // BUG: Missing await - this promise is NOT awaited!
+    // We add .catch() to simulate "fire-and-forget" where errors are swallowed.
+    // This allows the server to stay up (Partial Data Insertion) instead of crashing.
+    db.query(
+      `INSERT INTO user_profiles (user_id, phone, date_of_birth, bio) 
+       VALUES ($1, $2, $3, $4)`,
+      [user.id, phone || null, date_of_birth || null, bio || null]
+    ).catch(err => console.error('Silent failure in background insert:', err)); 
+
+    await db.query(
+      `INSERT INTO user_preferences (user_id, theme, language, notifications_enabled) 
+       VALUES ($1, $2, $3, $4)`,
+      [user.id, theme || 'light', language || 'en', notifications_enabled !== false]
+    );
+
+    if (street && city) {
+      await db.query(
+        `INSERT INTO user_addresses (user_id, address_type, street, city, state, postal_code, country, is_primary) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [user.id, address_type || 'home', street, city, state || null, postal_code || null, country || null, true]
+      );
+    }
 
     res.status(201).json({
       message: 'User registered successfully!',
@@ -85,9 +116,8 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // BUG: Typo - 'userr' instead of 'user'
-    // This will throw: Cannot read property 'password' of undefined
-    const isValidPassword = await bcrypt.compare(password, userr.password);
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
@@ -222,16 +252,50 @@ const logout = async (req, res) => {
  */
 const getProfile = async (req, res) => {
   try {
-    const result = await db.query(
+    // 1. Get User Basic Info
+    const userResult = await db.query(
       'SELECT id, email, full_name, role, created_at FROM users WHERE id = $1',
       [req.user.userId]
     );
 
-    if (result.rows.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    res.status(200).json({ user: result.rows[0] });
+    const user = userResult.rows[0];
+
+    // 2. Get Profile Data
+    // Note: This might be missing if the partial insertion bug occurred
+    const profileResult = await db.query(
+      'SELECT phone, date_of_birth, bio FROM user_profiles WHERE user_id = $1',
+      [userResult.rows[0].id]
+    );
+    const profile = profileResult.rows[0] || null;
+
+    // 3. Get Preferences
+    const preferencesResult = await db.query(
+      'SELECT theme, language, notifications_enabled FROM user_preferences WHERE user_id = $1',
+      [userResult.rows[0].id]
+    );
+    const preferences = preferencesResult.rows[0] || {};
+
+    // 4. Get Address
+    const addressResult = await db.query(
+      'SELECT street, city, state, postal_code, country FROM user_addresses WHERE user_id = $1',
+      [userResult.rows[0].id]
+    );
+    const address = addressResult.rows[0] || null;
+
+    // Return combined data structure
+    res.status(200).json({
+      user: {
+        ...user,
+        profile,
+        preferences,
+        address
+      }
+    });
+
   } catch (err) {
     console.error('Error fetching profile:', err);
     res.status(500).json({ error: 'Internal Server Error' });

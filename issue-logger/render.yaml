@@ -1,0 +1,26 @@
+services:
+  # Backend Service
+  - type: web
+    name: issue-logger-backend
+    env: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: issue-logger-db
+          property: connectionString
+      - key: ALLOWED_ORIGIN
+        sync: false # Set this to your Vercel URL after deployment
+
+databases:
+  - name: issue-logger-db
+    plan: free
+    databaseName: issue_logger
+    user: admin

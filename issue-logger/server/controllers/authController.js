@@ -37,9 +37,12 @@ const register = async (req, res) => {
     }
   }
 
+  // Use a transaction to ensure all inserts succeed or fail together
+  const client = await db.pool.connect();
+
   try {
     // Check if user already exists
-    const existingUser = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    const existingUser = await client.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
       return res.status(409).json({ error: 'User already exists.' });
     }
@@ -51,6 +54,9 @@ const register = async (req, res) => {
     // Determine role
     const userRole = role === 'admin' ? 'admin' : 'user';
 
+    // Start transaction
+    await client.query('BEGIN');
+
     // 1. Insert user into users table
     const userQuery = `
       INSERT INTO users (email, password, full_name, role) 
@@ -58,28 +64,34 @@ const register = async (req, res) => {
       RETURNING id, email, full_name, role, created_at
     `;
     const userValues = [email, hashedPassword, full_name || null, userRole];
-    const userResult = await db.query(userQuery, userValues);
+    const userResult = await client.query(userQuery, userValues);
     const user = userResult.rows[0];
 
-    db.query(
+    // 2. Insert profile (WITH AWAIT)
+    await client.query(
       `INSERT INTO user_profiles (user_id, phone, date_of_birth, bio) 
        VALUES ($1, $2, $3, $4)`,
       [user.id, phone || null, date_of_birth || null, bio || null]
-    ).catch(err => {}); 
+    );
 
-    await db.query(
+    // 3. Insert preferences
+    await client.query(
       `INSERT INTO user_preferences (user_id, theme, language, notifications_enabled) 
        VALUES ($1, $2, $3, $4)`,
       [user.id, theme || 'light', language || 'en', notifications_enabled !== false]
     );
 
+    // 4. Insert address
     if (street && city) {
-      await db.query(
+      await client.query(
         `INSERT INTO user_addresses (user_id, address_type, street, city, state, postal_code, country, is_primary) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [user.id, address_type || 'home', street, city, state || null, postal_code || null, country || null, true]
       );
     }
+
+    // Commit transaction
+    await client.query('COMMIT');
 
     res.status(201).json({
       message: 'User registered successfully!',
@@ -92,8 +104,11 @@ const register = async (req, res) => {
       }
     });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Error registering user:', err);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Registration failed' });
+  } finally {
+    client.release();
   }
 };
 

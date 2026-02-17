@@ -37,16 +37,16 @@ const register = async (req, res) => {
     }
   }
 
+  // Check if user already exists
+  const existingUser = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+  if (existingUser.rows.length > 0) {
+    return res.status(409).json({ error: 'User already exists.' });
+  }
+
   // Use a transaction to ensure all inserts succeed or fail together
   const client = await db.pool.connect();
 
   try {
-    // Check if user already exists
-    const existingUser = await client.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (existingUser.rows.length > 0) {
-      return res.status(409).json({ error: 'User already exists.' });
-    }
-
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -106,7 +106,17 @@ const register = async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error registering user:', err);
-    res.status(500).json({ error: 'Registration failed' });
+    // Log specific DB error details for RCA
+    if (err.code) {
+      console.error(`DB Error Code: ${err.code}`);
+      console.error(`Constraint: ${err.constraint}`);
+      console.error(`Detail: ${err.detail}`);
+    }
+    res.status(500).json({
+      error: 'Registration failed',
+      // Include error message to help user identify root cause (e.g. missing column)
+      details: err.message
+    });
   } finally {
     client.release();
   }

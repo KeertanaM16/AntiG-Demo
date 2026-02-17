@@ -133,6 +133,7 @@ const createTable = async () => {
   await createUserProfilesTable();
   await createUserPreferencesTable();
   await createUserAddressesTable();
+  await verifyAndFixSchema();
 };
 
 /**
@@ -188,6 +189,61 @@ const createUserPreferencesTable = async () => {
   } catch (err) {
     console.error('Error creating user_preferences table:', err);
     throw err;
+  }
+};
+
+/**
+ * Verify and Fix Schema (Auto-Healing)
+ */
+const verifyAndFixSchema = async () => {
+  console.log('Verifying database schema...');
+  const query = `
+    DO $$
+    BEGIN
+      -- 1. users table
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'full_name') THEN
+        ALTER TABLE users ADD COLUMN full_name VARCHAR(255);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'role') THEN
+        ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'user';
+      END IF;
+
+      -- 2. user_profiles table
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'phone') THEN
+        ALTER TABLE user_profiles ADD COLUMN phone VARCHAR(20);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'date_of_birth') THEN
+        ALTER TABLE user_profiles ADD COLUMN date_of_birth DATE;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'bio') THEN
+        ALTER TABLE user_profiles ADD COLUMN bio TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_profiles' AND column_name = 'avatar_url') THEN
+        ALTER TABLE user_profiles ADD COLUMN avatar_url VARCHAR(500);
+      END IF;
+
+      -- 3. user_preferences table
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'theme') THEN
+        ALTER TABLE user_preferences ADD COLUMN theme VARCHAR(20) DEFAULT 'light';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'language') THEN
+        ALTER TABLE user_preferences ADD COLUMN language VARCHAR(10) DEFAULT 'en';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'notifications_enabled') THEN
+        ALTER TABLE user_preferences ADD COLUMN notifications_enabled BOOLEAN DEFAULT true;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'email_notifications') THEN
+        ALTER TABLE user_preferences ADD COLUMN email_notifications BOOLEAN DEFAULT true;
+      END IF;
+    END $$;
+  `;
+
+  try {
+    await pool.query(query);
+    console.log('Schema verification and auto-healing completed.');
+  } catch (err) {
+    console.error('Error verifying schema:', err);
+    // Don't throw, allow app to try starting
   }
 };
 

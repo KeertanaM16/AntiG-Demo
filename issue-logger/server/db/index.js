@@ -235,6 +235,11 @@ const verifyAndFixSchema = async () => {
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_preferences' AND column_name = 'email_notifications') THEN
         ALTER TABLE user_preferences ADD COLUMN email_notifications BOOLEAN DEFAULT true;
       END IF;
+
+      -- 4. user_addresses table constraint
+      ALTER TABLE user_addresses DROP CONSTRAINT IF EXISTS user_addresses_address_type_check;
+      ALTER TABLE user_addresses ADD CONSTRAINT user_addresses_address_type_check CHECK (address_type IN ('home', 'work', 'other', 'Vacation'));
+
     END $$;
   `;
 
@@ -255,7 +260,7 @@ const createUserAddressesTable = async () => {
     CREATE TABLE IF NOT EXISTS user_addresses (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      address_type VARCHAR(20) CHECK (address_type IN ('home', 'work', 'other')),
+      address_type VARCHAR(20) CHECK (address_type IN ('home', 'work', 'other', 'Vacation')),
       street VARCHAR(255),
       city VARCHAR(100),
       state VARCHAR(100),

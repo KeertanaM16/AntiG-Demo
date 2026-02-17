@@ -264,7 +264,6 @@ const Register = ({ onRegisterSuccess }) => {
                                 <option value="home">Home</option>
                                 <option value="work">Work</option>
                                 <option value="other">Other</option>
-                                <option value="vacation">Vacation</option>
                             </select>
                         </div>
                         <div className="md:col-span-2">

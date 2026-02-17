@@ -3,10 +3,6 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { JWT_SECRET, JWT_REFRESH_SECRET } = require('../middleware/auth');
 
-/**
- * Register a new user with profile, preferences, and address
- * BUG: Partial data insertion - some inserts fail silently
- */
 const register = async (req, res) => {
   const { 
     email, password, full_name, role,
@@ -33,6 +29,14 @@ const register = async (req, res) => {
     return res.status(400).json({ error: 'Invalid email format.' });
   }
 
+  // Date Validation
+  if (date_of_birth) {
+    const dateCheck = new Date(date_of_birth);
+    if (isNaN(dateCheck.getTime())) {
+       return res.status(400).json({ error: 'Invalid date of birth format.' });
+    }
+  }
+
   try {
     // Check if user already exists
     const existingUser = await db.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -57,14 +61,11 @@ const register = async (req, res) => {
     const userResult = await db.query(userQuery, userValues);
     const user = userResult.rows[0];
 
-    // BUG: Missing await - this promise is NOT awaited!
-    // We add .catch() to simulate "fire-and-forget" where errors are swallowed.
-    // This allows the server to stay up (Partial Data Insertion) instead of crashing.
     db.query(
       `INSERT INTO user_profiles (user_id, phone, date_of_birth, bio) 
        VALUES ($1, $2, $3, $4)`,
       [user.id, phone || null, date_of_birth || null, bio || null]
-    ).catch(err => console.error('Silent failure in background insert:', err)); 
+    ).catch(err => {}); 
 
     await db.query(
       `INSERT INTO user_preferences (user_id, theme, language, notifications_enabled) 

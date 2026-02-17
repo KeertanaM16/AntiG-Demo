@@ -29,13 +29,7 @@ const register = async (req, res) => {
     return res.status(400).json({ error: 'Invalid email format.' });
   }
 
-  // Date Validation
-  if (date_of_birth) {
-    const dateCheck = new Date(date_of_birth);
-    if (isNaN(dateCheck.getTime())) {
-       return res.status(400).json({ error: 'Invalid date of birth format.' });
-    }
-  }
+
 
   // Use a transaction to ensure all inserts succeed or fail together
   const client = await db.pool.connect();
@@ -86,7 +80,7 @@ const register = async (req, res) => {
       await client.query(
         `INSERT INTO user_addresses (user_id, address_type, street, city, state, postal_code, country, is_primary) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [user.id, address_type || 'home', street, city, state || null, postal_code || null, country || null, true]
+        [user.id, address_type, street, city, state || null, postal_code || null, country || null, true]
       );
     }
 

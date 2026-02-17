@@ -254,6 +254,19 @@ const Register = ({ onRegisterSuccess }) => {
                     <h3 className="text-lg font-semibold mb-4 text-gray-600">Address</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Address Type</label>
+                            <select
+                                name="address_type"
+                                className="w-full px-3 py-2 border rounded-md"
+                                value={formData.address_type}
+                                onChange={handleChange}
+                            >
+                                <option value="home">Home</option>
+                                <option value="work">Work</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Street</label>
                             <input
                                 type="text"
